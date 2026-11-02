@@ -26,7 +26,7 @@ function configuredFormKey() {
       b.setAttribute("aria-pressed", String(dark));
       b.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
     });
-    if (themeMeta) themeMeta.setAttribute("content", dark ? "#100818" : "#FFF7F2");
+    if (themeMeta) themeMeta.setAttribute("content", dark ? "#090909" : "#f7f7f5");
   };
   buttons.forEach((b) =>
     b.addEventListener("click", () => {

@@ -66,4 +66,4 @@ Keep the Zoho TXT, DKIM and Mail Settings (MX) records exactly as they are. Then
 ## Editing
 - Colours, fonts, spacing: tokens at the top of `assets/styles.css` (light and dark).
 - Header and footer are repeated in each page; change every HTML file when you edit them. `404.html` uses paths that start with `/` so a missing page still loads the CSS.
-- Fonts, self-hosted in `assets/fonts` (SIL Open Font License): Syne for headings, Inter for body text.
+- Fonts: Inter, self-hosted in `assets/fonts` (SIL Open Font License). Colour and spacing tokens are at the top of `assets/styles.css`.
