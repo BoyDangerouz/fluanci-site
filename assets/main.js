@@ -1,30 +1,32 @@
-/* =========================================================
-   Fluanci site behaviour
-   ========================================================= */
-
-/* ---- Form delivery -------------------------------------------------------
-   Until a form service is connected, forms open the visitor's email app with
-   a pre-filled message to hello@fluanci.com.
-   To collect submissions directly, create a free form at formspree.io (or a
-   similar service) and paste its endpoints below, e.g.
-   "https://formspree.io/f/abcdwxyz".
---------------------------------------------------------------------------- */
-const FORM_ENDPOINTS = {
-  waitlist: "",
-  contact: "",
-};
+/* Fluanci site behaviour
+   Forms: see README, "Activate the forms".
+   Both the waitlist and the contact form use one Web3Forms access key.
+   Leave FORM_ACCESS_KEY as an empty string until that key exists.
+   Until then, a submit opens the visitor's email app (mailto fallback).
+*/
+const FORM_ACCESS_KEY = "";
+const FORM_ENDPOINT = "https://api.web3forms.com/submit";
 const CONTACT_EMAIL = "hello@fluanci.com";
 
-/* ---- Theme toggle ---- */
+function configuredFormKey() {
+  const key = String(FORM_ACCESS_KEY || "").trim();
+  if (!key) return "";
+  if (/^(your[_\s-]?|paste|changeme|xxxx|todo|replace)/i.test(key)) return "";
+  return key;
+}
+
+/* Theme */
 (function () {
   const root = document.documentElement;
   const buttons = document.querySelectorAll("[data-theme-toggle]");
+  const themeMeta = document.getElementById("theme-color");
   const sync = () => {
     const dark = root.dataset.theme === "dark";
     buttons.forEach((b) => {
       b.setAttribute("aria-pressed", String(dark));
       b.setAttribute("aria-label", dark ? "Switch to light mode" : "Switch to dark mode");
     });
+    if (themeMeta) themeMeta.setAttribute("content", dark ? "#100818" : "#FFF7F2");
   };
   buttons.forEach((b) =>
     b.addEventListener("click", () => {
@@ -37,7 +39,7 @@ const CONTACT_EMAIL = "hello@fluanci.com";
   sync();
 })();
 
-/* ---- Mobile menu (accessible drawer) ---- */
+/* Mobile menu */
 (function () {
   const openBtn = document.querySelector("[data-menu-open]");
   const drawer = document.getElementById("mobile-menu");
@@ -52,45 +54,51 @@ const CONTACT_EMAIL = "hello@fluanci.com";
     document.body.style.overflow = "hidden";
     setTimeout(() => closeBtn && closeBtn.focus(), 50);
   };
-  const close = () => {
+  const close = (returnFocus) => {
+    const wasOpen = drawer.classList.contains("is-open");
     drawer.classList.remove("is-open");
     drawer.setAttribute("inert", "");
     openBtn.setAttribute("aria-expanded", "false");
     document.body.style.overflow = "";
-    openBtn.focus();
+    if (wasOpen && returnFocus) openBtn.focus();
   };
 
   openBtn.addEventListener("click", open);
-  closeBtn && closeBtn.addEventListener("click", close);
-  drawer.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => {
-    drawer.classList.remove("is-open");
-    drawer.setAttribute("inert", "");
-    document.body.style.overflow = "";
-  }));
+  if (closeBtn) closeBtn.addEventListener("click", () => close(true));
+  drawer.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => close(false)));
   drawer.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") return close();
+    if (e.key === "Escape") { close(true); return; }
     if (e.key !== "Tab") return;
     const items = Array.from(focusables());
-    const first = items[0], last = items[items.length - 1];
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
+
+  const desktop = window.matchMedia("(min-width: 980px)");
+  const onDesktop = () => { if (desktop.matches) close(false); };
+  if (desktop.addEventListener) desktop.addEventListener("change", onDesktop);
+  else if (desktop.addListener) desktop.addListener(onDesktop);
 })();
 
-/* ---- Decorative waveform (static by default, slow pulse if motion allowed) ---- */
+/* Waveform bars. Static when the visitor prefers less motion or data. */
 (function () {
-  const heights = [8, 12, 20, 14, 10, 24, 30, 18, 12, 22, 32, 20, 14, 10, 18, 26, 16, 12, 22, 14, 8];
+  const pattern = [10, 18, 28, 16, 12, 34, 48, 26, 14, 36, 52, 22, 16, 12, 30, 44, 20, 14, 32, 18, 10, 24, 40, 22, 12, 28, 16, 8];
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const saveData = navigator.connection && navigator.connection.saveData;
   document.querySelectorAll("[data-wave]").forEach((wave) => {
-    wave.innerHTML = heights.map((h, i) => `<i style="--h:${h};--d:${i}"></i>`).join("");
-    const saveData = navigator.connection && navigator.connection.saveData;
-    if (!saveData) wave.classList.add("is-animated");
+    const wide = wave.dataset.wave === "wide" && window.innerWidth >= 720;
+    const heights = wide ? pattern.concat(pattern) : pattern;
+    wave.innerHTML = heights.map((h, i) => `<span class="bar" style="--h:${h};--d:${i}"></span>`).join("");
+    if (!reduce && !saveData) wave.classList.add("is-animated");
   });
 })();
 
-/* ---- Footer year ---- */
-document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new Date().getFullYear()));
+document.querySelectorAll("[data-year]").forEach((el) => { el.textContent = String(new Date().getFullYear()); });
 
-/* ---- Forms ---- */
+/* Forms */
 (function () {
   const emailOk = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim());
 
@@ -98,9 +106,10 @@ document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new D
     const input = field.querySelector("input, select, textarea");
     const err = field.querySelector(".field-error");
     if (!input || !err) return;
+    const slot = err.querySelector("span");
     if (message) {
       input.setAttribute("aria-invalid", "true");
-      err.querySelector("span").textContent = message;
+      if (slot) slot.textContent = message;
       err.classList.add("is-visible");
     } else {
       input.removeAttribute("aria-invalid");
@@ -112,14 +121,15 @@ document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new D
     const box = form.querySelector(".form-status");
     if (!box) return;
     box.className = `form-status ${type} is-visible`;
-    box.querySelector("span").textContent = message;
+    const slot = box.querySelector("span");
+    if (slot) slot.textContent = message;
   };
 
   const validate = (form) => {
     let firstBad = null;
     form.querySelectorAll(".field").forEach((field) => {
       const input = field.querySelector("input, select, textarea");
-      if (!input) return;
+      if (!input || input.type === "hidden") return;
       let msg = "";
       const val = (input.value || "").trim();
       if (input.required && !val) msg = field.dataset.requiredMsg || "This field is required.";
@@ -143,6 +153,27 @@ document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new D
     return `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
+  const payloadFor = (kind, data, key) => {
+    const payload = {
+      access_key: key,
+      email: data.email,
+      form: kind,
+      subject: kind === "waitlist"
+        ? "Fluanci waitlist signup"
+        : `[${data.subject || "General"}] Message from ${data.name || "website"}`,
+      message: kind === "waitlist"
+        ? `Please add me to the Fluanci waitlist.\n\nEmail: ${data.email}\n\nI understand Fluanci will only use this address to send updates about Lerato, and I can ask to be removed at any time.`
+        : data.message,
+    };
+    if (kind === "contact") {
+      payload.name = data.name;
+      payload.topic = data.subject || "General";
+    } else {
+      payload.name = "Waitlist";
+    }
+    return payload;
+  };
+
   document.querySelectorAll("form[data-form]").forEach((form) => {
     const kind = form.dataset.form;
     form.setAttribute("novalidate", "");
@@ -160,13 +191,10 @@ document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new D
         return;
       }
       const data = Object.fromEntries(new FormData(form).entries());
-      if (data._gotcha) return; // spam honeypot
-      const btn = form.querySelector('button[type="submit"]');
-      const label = btn.querySelector("span");
-      const original = label.textContent;
+      if (data._gotcha || data.botcheck) return;
 
-      const endpoint = FORM_ENDPOINTS[kind];
-      if (!endpoint) {
+      const key = configuredFormKey();
+      if (!key) {
         window.location.href = mailtoFor(kind, data);
         showStatus(form, "success",
           kind === "waitlist"
@@ -175,15 +203,20 @@ document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new D
         return;
       }
 
-      btn.disabled = true;
-      label.textContent = kind === "waitlist" ? "Joining…" : "Sending…";
+      const btn = form.querySelector('button[type="submit"]');
+      const label = btn && btn.querySelector("span");
+      const original = label ? label.textContent : "";
+      if (btn) btn.disabled = true;
+      if (label) label.textContent = kind === "waitlist" ? "Joining…" : "Sending…";
       try {
-        const res = await fetch(endpoint, {
+        const res = await fetch(FORM_ENDPOINT, {
           method: "POST",
           headers: { Accept: "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify(payloadFor(kind, data, key)),
         });
-        if (!res.ok) throw new Error(String(res.status));
+        let json = null;
+        try { json = await res.json(); } catch (err) { json = null; }
+        if (!res.ok || !json || json.success !== true) throw new Error("submit failed");
         form.reset();
         showStatus(form, "success",
           kind === "waitlist"
@@ -192,8 +225,8 @@ document.querySelectorAll("[data-year]").forEach((el) => (el.textContent = new D
       } catch (err) {
         showStatus(form, "error", `That didn't go through. Try again, or email ${CONTACT_EMAIL} directly.`);
       } finally {
-        btn.disabled = false;
-        label.textContent = original;
+        if (btn) btn.disabled = false;
+        if (label) label.textContent = original;
       }
     });
   });
