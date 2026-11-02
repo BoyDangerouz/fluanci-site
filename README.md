@@ -14,35 +14,23 @@ Light default, dark mode, mobile-first. Hosted on GitHub Pages.
 - robots.txt    Allows crawling and points at the sitemap
 - sitemap.xml   Public pages only (not the 404)
 
-## Activate the forms
+## Forms
 
-GitHub Pages cannot run a server. The waitlist (on the home page and the contact page) and the contact form share **one** Web3Forms access key, which is free and is meant to live in the public JavaScript.
+GitHub Pages cannot run a server. The waitlist (home and contact) and the contact form share one Web3Forms access key in `assets/main.js` (`FORM_ACCESS_KEY`). The key is already set. It is public by design: it only tells Web3Forms which inbox to use. Do not put any other secret in that file.
 
-Both forms are wired in `assets/main.js`:
+A successful submit is sent to [Web3Forms](https://web3forms.com), which emails hello@fluanci.com.
 
-```js
-const FORM_ACCESS_KEY = "";
-const FORM_ENDPOINT = "https://api.web3forms.com/submit";
-```
+- Waitlist subject: `Fluanci waitlist signup`
+- Contact subject: `[General] Message from Name` (or Partnership / Other, matching the menu)
 
-Leave `FORM_ACCESS_KEY` as `""` until you have a real key. While it is empty, or still a placeholder such as `YOUR_ACCESS_KEY`, submitting a form opens the visitor's email app with a message addressed to hello@fluanci.com. Nothing is stored until they press send in that app.
+If the browser cannot reach Web3Forms (offline, blocked, or the request fails before a response), the form opens the visitor's email app with the same message addressed to hello@fluanci.com. If Web3Forms responds but rejects the submission, the page shows an error and points people at hello@fluanci.com. The site also drops a submission that fills either hidden field (`_gotcha` or `botcheck`).
 
-To receive submissions in the Fluanci inbox:
-
-1. Open [https://web3forms.com](https://web3forms.com) and create a free access key for **hello@fluanci.com**. Web3Forms emails each submission to that address. No paid plan and no server are required. The key is public by design. Do not put any other secret in this file.
-2. In `assets/main.js`, set `FORM_ACCESS_KEY` to the key you were given. Leave `FORM_ENDPOINT` as `https://api.web3forms.com/submit` unless Web3Forms tells you to change it.
-3. Commit and push to the branch GitHub Pages publishes (usually `main`).
-4. Send one test from the home waitlist and one from the contact form. Each should show a success message on the page, and both should arrive at hello@fluanci.com.
-   - Waitlist subject: `Fluanci waitlist signup`
-   - Contact subject: `[General] Message from Name` (or Partnership / Other, matching the menu)
-5. In the Web3Forms dashboard, turn on their spam filter if you want it. The site also drops a submission that fills either hidden field (`_gotcha` or `botcheck`).
-
-If a submission fails after the key is set, the form shows an error and points people at hello@fluanci.com. To go back to the email-app fallback, set `FORM_ACCESS_KEY` to `""` again.
+To rotate the key, create a new one at Web3Forms for hello@fluanci.com and replace `FORM_ACCESS_KEY`. Leave `FORM_ENDPOINT` as `https://api.web3forms.com/submit` unless Web3Forms tells you to change it. Clearing the key back to `""` makes every submit use the email-app path.
 
 Web3Forms is the provider named in the privacy notice. If you switch providers, update that notice and this file together.
 
 ## Before going live
-1. **Forms.** Follow "Activate the forms" above. Until the access key is set, the mailto fallback is what visitors get.
+1. **Forms.** The Web3Forms key is already in `assets/main.js`. Send one test from the waitlist and one from the contact form and confirm both arrive at hello@fluanci.com. See "Forms" above.
 2. **Partners.** Confirm Katlego Advisory and Joy Of Joys Organisation are happy to be listed.
 3. **Privacy notice.** Have it reviewed before relying on it. The storage section already describes the mailto fallback and Web3Forms.
 

@@ -1,10 +1,10 @@
 /* Fluanci site behaviour
-   Forms: see README, "Activate the forms".
+   Forms: see README, "Forms".
    Both the waitlist and the contact form use one Web3Forms access key.
-   Leave FORM_ACCESS_KEY as an empty string until that key exists.
-   Until then, a submit opens the visitor's email app (mailto fallback).
+   The key is public by design (it only identifies the form).
+   If the browser cannot reach Web3Forms, submit opens the visitor's email app.
 */
-const FORM_ACCESS_KEY = "";
+const FORM_ACCESS_KEY = "01a0cd92-014f-4ebf-a07c-8461abdadb66";
 const FORM_ENDPOINT = "https://api.web3forms.com/submit";
 const CONTACT_EMAIL = "hello@fluanci.com";
 
@@ -223,7 +223,16 @@ document.querySelectorAll("[data-year]").forEach((el) => { el.textContent = Stri
             ? "You're on the list. We'll email you when there's real news about Lerato."
             : "Message sent. Thank you for reaching out.");
       } catch (err) {
-        showStatus(form, "error", `That didn't go through. Try again, or email ${CONTACT_EMAIL} directly.`);
+        const network = err instanceof TypeError;
+        if (network) {
+          window.location.href = mailtoFor(kind, data);
+          showStatus(form, "success",
+            kind === "waitlist"
+              ? "The form service didn't respond. Your email app should open with a ready-to-send message. Press send and you're on the list."
+              : "The form service didn't respond. Your email app should open with your message ready. Press send to reach us.");
+        } else {
+          showStatus(form, "error", `That didn't go through. Try again, or email ${CONTACT_EMAIL} directly.`);
+        }
       } finally {
         if (btn) btn.disabled = false;
         if (label) label.textContent = original;
